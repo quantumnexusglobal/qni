@@ -12,7 +12,6 @@ import {
   Tag,
   ArrowRight,
   Sparkles,
-  PenSquare,
   ShieldAlert,
   SlidersHorizontal,
   TrendingUp,
@@ -84,16 +83,6 @@ export default function BlogPage() {
               </p>
             </div>
 
-            {/* Writer & Team Portal Link Button */}
-            <div className="flex items-center gap-3">
-              <Link
-                href="/team-portal"
-                className="px-5 py-3 rounded-full bg-foreground text-background hover:bg-foreground/90 text-sm font-medium transition-all inline-flex items-center gap-2 shadow-lg hover:shadow-xl"
-              >
-                <PenSquare className="w-4 h-4" />
-                Team Writer Portal
-              </Link>
-            </div>
           </div>
 
           {/* Search & Category Filter Bar */}
@@ -310,22 +299,6 @@ export default function BlogPage() {
         </div>
       </section>
 
-      {/* Footer Banner for Team Members */}
-      <section className="px-6 lg:px-12 py-16 border-t border-foreground/10 bg-foreground/[0.02]">
-        <div className="max-w-[1200px] mx-auto text-center">
-          <h2 className="text-3xl font-display mb-4">Are you a QNG Team Member or Researcher?</h2>
-          <p className="text-muted-foreground text-sm max-w-xl mx-auto mb-6">
-            Log in to the Team Writer Portal to publish research papers, tutorials, and algorithm breakdowns directly to the QNG global platform.
-          </p>
-          <Link
-            href="/team-portal"
-            className="px-6 py-3 rounded-full bg-foreground text-background hover:bg-foreground/90 text-sm font-medium transition-all inline-flex items-center gap-2"
-          >
-            <PenSquare className="w-4 h-4" />
-            Access Team Member Writer Portal
-          </Link>
-        </div>
-      </section>
     </main>
   );
 }
