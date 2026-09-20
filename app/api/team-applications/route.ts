@@ -32,8 +32,11 @@ export async function POST(request: Request) {
     const contributionAreas = Array.isArray(body.contributionAreas)
       ? body.contributionAreas.map((area: unknown) => String(area).trim()).filter(Boolean)
       : body.role?.trim() ? [String(body.role).trim()] : [];
-    if (contributionAreas.length === 0) {
-      return NextResponse.json({ success: false, message: 'Select at least one contribution area.' }, { status: 400 });
+    if (contributionAreas.length === 0 || contributionAreas.length > 2) {
+      return NextResponse.json({ success: false, message: 'Select one or two contribution areas.' }, { status: 400 });
+    }
+    if (!body.consent) {
+      return NextResponse.json({ success: false, message: 'Contributor consent is required.' }, { status: 400 });
     }
 
     const doc = {
@@ -44,8 +47,30 @@ export async function POST(request: Request) {
       role: contributionAreas.join(', '),
       currentStatus: body.currentStatus ? String(body.currentStatus).trim() : 'Not specified',
       contributionAreas,
+      countryCity: body.countryCity ? String(body.countryCity).trim() : '',
+      institution: body.institution ? String(body.institution).trim() : '',
+      discipline: body.discipline ? String(body.discipline).trim() : '',
+      linkedinUrl: body.linkedinUrl ? String(body.linkedinUrl).trim() : '',
       skills: body.skills ? String(body.skills).trim() : '',
+      primaryArea: body.primaryArea ? String(body.primaryArea).trim() : '',
+      ownershipIdea: body.ownershipIdea ? String(body.ownershipIdea).trim() : '',
+      completedWork: body.completedWork ? String(body.completedWork).trim() : '',
+      evidence: body.evidence ? String(body.evidence).trim() : '',
+      quantumExperience: body.quantumExperience ? String(body.quantumExperience).trim() : '',
+      quantumAreas: Array.isArray(body.quantumAreas) ? body.quantumAreas.map((area: unknown) => String(area).trim()).filter(Boolean) : [],
       availability: body.availability ? String(body.availability).trim() : '',
+      duration: body.duration ? String(body.duration).trim() : '',
+      workStyle: body.workStyle ? String(body.workStyle).trim() : '',
+      checkIns: body.checkIns ? String(body.checkIns).trim() : '',
+      timezone: body.timezone ? String(body.timezone).trim() : '',
+      whyQng: body.whyQng ? String(body.whyQng).trim() : '',
+      qngStrength: body.qngStrength ? String(body.qngStrength).trim() : '',
+      newInitiative: body.newInitiative ? String(body.newInitiative).trim() : '',
+      greaterResponsibility: body.greaterResponsibility ? String(body.greaterResponsibility).trim() : '',
+      mentoring: body.mentoring ? String(body.mentoring).trim() : '',
+      anythingElse: body.anythingElse ? String(body.anythingElse).trim() : '',
+      consent: true,
+      contactConsent: Boolean(body.contactConsent),
       portfolioUrl: body.portfolioUrl ? String(body.portfolioUrl).trim() : '',
       message: body.skills ? String(body.skills).trim() : '',
       status: 'Pending' as const,
