@@ -89,6 +89,26 @@ export default function AdminBroadcastPage() {
     setResult(null);
   };
 
+  const loadSeptemberRecommendationDraft = () => {
+    const targetEvent = events.find((item) => item.eventDate?.startsWith("2026-09-22"));
+    if (!targetEvent) {
+      setErrorMsg("The September 22 online event could not be found.");
+      return;
+    }
+
+    const previousEvent = events
+      .filter((item) => item.eventDate && new Date(item.eventDate).getTime() < new Date(targetEvent.eventDate!).getTime())
+      .sort((a, b) => new Date(b.eventDate!).getTime() - new Date(a.eventDate!).getTime())[0];
+
+    setSelectedAudiences(["registrations"]);
+    setEventId(previousEvent?.id || "");
+    setSubject("You may like this upcoming quantum computing session");
+    setMessage(`Hi {{name}},\n\nYou registered for our previous talk, so we thought you may like to attend this upcoming online session as well.\n\n${targetEvent.title}\n\nDate: 22 September 2026\nFormat: Online session\n\nRegister here:\nhttps://www.quantumnexusglobal.org/events/${targetEvent.id}\n\nWe hope to see you there!\n\nWarmly,\nThe Quantum Nexus Global Team`);
+    setPreview(null);
+    setResult(null);
+    setErrorMsg("");
+  };
+
   const handlePosterUpload = async (file: File | undefined) => {
     if (!file) return;
     setIsUploadingPoster(true);
@@ -202,6 +222,16 @@ export default function AdminBroadcastPage() {
       </header>
 
       <main className="max-w-[900px] mx-auto px-6 lg:px-12 py-8 space-y-6">
+        <div className="border border-cyan-500/25 bg-cyan-500/[0.06] rounded-3xl p-6 lg:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-display font-bold mb-1">Saved Draft</h2>
+            <p className="text-xs text-muted-foreground">Recommendation email for previous event registrants and the 22 September online session.</p>
+          </div>
+          <Button type="button" onClick={loadSeptemberRecommendationDraft} className="shrink-0">
+            <PenSquare className="w-4 h-4 mr-2" /> Load Draft
+          </Button>
+        </div>
+
         {/* Audience selection */}
         <div className="border border-foreground/15 bg-foreground/[0.03] rounded-3xl p-6 lg:p-8 space-y-5">
           <div>
