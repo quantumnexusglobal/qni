@@ -19,6 +19,8 @@ export interface EventItem {
   createdAt: string;
   // Extended fields
   imageUrl?: string;
+  meetingLink?: string;
+  calendarLink?: string;
   eventDate?: string; // ISO date string — used to compute upcoming vs past
   status?: 'upcoming' | 'past';
 }

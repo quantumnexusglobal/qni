@@ -117,6 +117,7 @@ export default function EventRegisterPage({ params }: { params: Promise<{ id: st
                   date: event?.month && event?.day ? `${event.month} ${event.day}, 2026` : undefined,
                   time: event?.time,
                   location: event?.location,
+                  calendarLink: event?.calendarLink,
                   token: regToken,
                 }}
               />

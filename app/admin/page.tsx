@@ -907,7 +907,7 @@ export default function AdminDashboardPage() {
             >
               <div className="flex items-center gap-3">
                 <Users className="w-4 h-4" />
-                <span>+ Manage Team Page</span>
+                <span>Edit Team Members</span>
               </div>
               <Sparkles className="w-3.5 h-3.5" />
             </Link>

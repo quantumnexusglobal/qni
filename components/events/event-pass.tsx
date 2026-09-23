@@ -9,6 +9,7 @@ export interface EventPassData {
   date?: string;
   time?: string;
   location?: string;
+  calendarLink?: string;
   token: string;
 }
 
@@ -61,6 +62,17 @@ export function EventPass({ data }: { data: EventPassData }) {
           <p className="text-[10px] font-mono uppercase tracking-widest text-foreground/40 mb-1">Pass ID</p>
           <p className="text-sm font-mono font-semibold text-foreground/80">{data.token}</p>
         </div>
+
+        {data.calendarLink && (
+          <a
+            href={data.calendarLink}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-foreground/15 text-foreground text-sm font-semibold hover:bg-foreground/5 transition-colors"
+          >
+            <Calendar className="w-4 h-4" /> Add to Google Calendar
+          </a>
+        )}
 
         <a
           href={getLinkedInShareUrl(data.eventId)}

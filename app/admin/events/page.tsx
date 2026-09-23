@@ -47,6 +47,8 @@ function emptyForm() {
     description: "",
     fullDescription: "",
     imageUrl: "",
+    meetingLink: "https://us06web.zoom.us/j/88122633436?pwd=P9gCe6qpKaXIfmhRmgjWrMrNMQ0CnI.1",
+    calendarLink: "https://calendar.app.google/v5w4Jrh5e4AfGyzF8",
     status: "upcoming" as "upcoming" | "past",
   };
 }
@@ -131,6 +133,8 @@ export default function AdminEventsPage() {
       description: event.description,
       fullDescription: event.fullDescription,
       imageUrl: event.imageUrl || "",
+      meetingLink: event.meetingLink || "",
+      calendarLink: event.calendarLink || "",
       status: event.status || "upcoming",
     });
     setShowForm(true);
@@ -171,6 +175,8 @@ export default function AdminEventsPage() {
       description: formData.description,
       fullDescription: formData.fullDescription,
       imageUrl: formData.imageUrl,
+      meetingLink: formData.meetingLink,
+      calendarLink: formData.calendarLink,
       status: formData.status,
       schedule: [],
       createdAt: new Date().toISOString(),
@@ -440,6 +446,22 @@ export default function AdminEventsPage() {
                     </button>
                   </div>
                 )}
+              </div>
+
+              {/* Short description */}
+              <div>
+                <label className="block text-xs font-mono uppercase text-muted-foreground mb-1">Zoom Meeting Link</label>
+                <input type="url" name="meetingLink" value={formData.meetingLink} onChange={handleChange}
+                  placeholder="https://us06web.zoom.us/..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-foreground/15 bg-background text-xs font-mono text-foreground focus:outline-none focus:border-foreground/50"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-mono uppercase text-muted-foreground mb-1">Google Calendar Link</label>
+                <input type="url" name="calendarLink" value={formData.calendarLink} onChange={handleChange}
+                  placeholder="https://calendar.app.google/..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-foreground/15 bg-background text-xs font-mono text-foreground focus:outline-none focus:border-foreground/50"
+                />
               </div>
 
               {/* Short description */}

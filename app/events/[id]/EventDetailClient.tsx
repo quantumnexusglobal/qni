@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Calendar, Users, Clock, Linkedin, User } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Users, Clock, Linkedin, User, Video } from 'lucide-react';
 
 import { EventItem, resolveEventStatus, isRegistrationOpen } from '@/lib/events-store';
 import { getLinkedInShareUrl } from '@/components/events/event-pass';
@@ -137,6 +137,26 @@ export function EventDetailClient({ event }: { event: EventItem | null }) {
             <Link href="/events" className="px-8 py-3.5 border border-foreground/20 text-foreground rounded-xl font-medium hover:border-foreground/40 transition-all duration-300">
               Browse All Events
             </Link>
+            {event.meetingLink && (
+              <a
+                href={event.meetingLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-8 py-3.5 border border-cyan-500/40 text-cyan-700 rounded-xl font-medium hover:bg-cyan-50 transition-all duration-300 inline-flex items-center gap-2"
+              >
+                <Video className="w-4 h-4" /> Join on Zoom
+              </a>
+            )}
+            {event.calendarLink && (
+              <a
+                href={event.calendarLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="px-8 py-3.5 border border-foreground/20 text-foreground rounded-xl font-medium hover:border-foreground/40 transition-all duration-300 inline-flex items-center gap-2"
+              >
+                <Calendar className="w-4 h-4" /> Add to Google Calendar
+              </a>
+            )}
             <a
               href={getLinkedInShareUrl(event.id)}
               target="_blank"
