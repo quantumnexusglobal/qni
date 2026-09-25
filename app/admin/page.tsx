@@ -201,7 +201,16 @@ export default function AdminDashboardPage() {
 
     const persisted = localStorage.getItem('qni_admin_authenticated');
     if (persisted === 'true') {
-      setIsAuthenticated(true);
+      fetch('/api/admin/session')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.authenticated) {
+            setIsAuthenticated(true);
+          } else {
+            localStorage.removeItem('qni_admin_authenticated');
+          }
+        })
+        .catch(() => localStorage.removeItem('qni_admin_authenticated'));
       return;
     }
 
@@ -446,8 +455,13 @@ export default function AdminDashboardPage() {
     refreshData();
   };
 
-  const handleRegStatus = (id: string, status: EventRegistration['status']) => {
+  const handleRegStatus = async (id: string, status: EventRegistration['status']) => {
     updateRegistrationStatus(id, status);
+    await fetch('/api/register', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    }).catch(() => {});
     refreshData();
   };
 

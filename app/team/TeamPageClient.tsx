@@ -50,7 +50,8 @@ export default function TeamPageClient() {
 
   useEffect(() => {
     setIsVisible(true);
-    setTeamMembers(getTeamMembers());
+    const localMembers = getTeamMembers();
+    setTeamMembers(localMembers);
 
     // Merge in any admin-edited members synced to MongoDB so changes made
     // through the admin dashboard are visible to every visitor.
@@ -59,7 +60,7 @@ export default function TeamPageClient() {
       .then((data) => {
         if (data.success && Array.isArray(data.data) && data.data.length > 0) {
           const remote: TeamMember[] = data.data.map((m: any) => ({
-            id: m.id,
+            id: m.id || (m._id ? String(m._id) : Date.now().toString()),
             name: m.name || "",
             role: m.role || "",
             bio: m.bio || "",
@@ -69,7 +70,13 @@ export default function TeamPageClient() {
             order: typeof m.order === "number" ? m.order : 99,
             createdAt: m.createdAt || new Date().toISOString(),
           }));
-          setTeamMembers([...remote].sort((a, b) => a.order - b.order));
+          const merged = [...localMembers];
+          remote.forEach((member) => {
+            const index = merged.findIndex((existing) => existing.id === member.id);
+            if (index >= 0) merged[index] = member;
+            else merged.push(member);
+          });
+          setTeamMembers(merged.sort((a, b) => a.order - b.order));
         }
       })
       .catch(() => {

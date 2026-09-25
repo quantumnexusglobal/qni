@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { getBlogSession, hasAdminSession } from '@/lib/blog-auth';
 
 export async function POST(request: Request) {
   try {
+    if (!(await getBlogSession()) && !(await hasAdminSession())) {
+      return NextResponse.json({ success: false, error: 'Writer or admin authentication required.' }, { status: 401 });
+    }
     const formData = await request.formData();
     const file = formData.get('file') as File | null;
 

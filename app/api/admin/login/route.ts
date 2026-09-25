@@ -8,10 +8,12 @@ export async function POST(request: Request) {
     // so the same device doesn't need the username/password every time.
     const envAccessToken = process.env.ADMIN_ACCESS_TOKEN;
     if (token && envAccessToken && token === envAccessToken) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         message: 'Admin authenticated via access token',
       });
+      response.cookies.set('qni_admin_session', 'true', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === 'production' });
+      return response;
     }
 
     const envAdminEmail = (process.env.ADMIN_EMAIL || 'admin@quantumnexusglobal.org').toLowerCase().trim();
@@ -27,10 +29,12 @@ export async function POST(request: Request) {
     const isPasswordMatch = password === envAdminPassword;
 
     if (isEmailMatch && isPasswordMatch) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         message: 'Admin authenticated successfully',
       });
+      response.cookies.set('qni_admin_session', 'true', { httpOnly: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 7, secure: process.env.NODE_ENV === 'production' });
+      return response;
     }
 
     return NextResponse.json(

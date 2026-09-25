@@ -27,91 +27,20 @@ import {
   FolderOpen,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getBlogs, saveBlog, deleteBlog, BlogPost } from '@/lib/blogs-store';
-import { getJoins, JoinSubmission } from '@/lib/submissions-store';
-import { getBlogWriters, BlogWriter } from '@/lib/blog-writers-store';
-
-// Founding team — always has Writer Portal access, independent of Join Us approvals
-const CORE_TEAM = [
-  { name: 'Sharvan Kumar Sharma', role: 'Founder & President', email: 'sharvanksharma97@gmail.com' },
-  { name: 'Rajan Jha', role: 'Co-Founder', email: 'rajan.jha@qnexusindia.com' },
-];
-
-interface TeamIdentity {
-  name: string;
-  role: string;
-  email: string;
-  // Only set for admin-invited blog writers — their exact password is
-  // required at login instead of the shared team passcode.
-  password?: string;
-}
+import { BlogPost } from '@/lib/blogs-store';
 
 export default function TeamPortalPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [teamEmail, setTeamEmail] = useState(CORE_TEAM[0].email);
+  const [teamEmail, setTeamEmail] = useState('');
   const [teamPassword, setTeamPassword] = useState('');
   const [loginError, setLoginError] = useState('');
-  const [authorName, setAuthorName] = useState('Sharvan Kumar Sharma');
-  const [authorRole, setAuthorRole] = useState('Founder & President');
-
-  // Members eligible to log in — the core team plus everyone whose "Join Us"
-  // application the admin has approved (so their real name/role shows here
-  // instead of a placeholder list).
-  const [eligibleMembers, setEligibleMembers] = useState<TeamIdentity[]>(CORE_TEAM);
+  const [authorName, setAuthorName] = useState('');
+  const [authorRole, setAuthorRole] = useState('Guest Contributor');
 
   const [blogs, setBlogs] = useState<BlogPost[]>([]);
   const [activeTab, setActiveTab] = useState<'my-blogs' | 'create' | 'resources'>('my-blogs');
   const [editingPostId, setEditingPostId] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-
-  // Load approved Join Us applicants + admin-invited blog writers so they all
-  // appear as selectable identities (real names replacing the old placeholder list).
-  useEffect(() => {
-    let approvedJoins: TeamIdentity[] = [];
-    let invitedWriters: TeamIdentity[] = [];
-
-    const rebuild = () => {
-      const merged = [...CORE_TEAM];
-      [...approvedJoins, ...invitedWriters].forEach((m) => {
-        if (!m.name || !m.email) return;
-        const existingIdx = merged.findIndex((c) => c.email.toLowerCase() === m.email.toLowerCase());
-        if (existingIdx >= 0) {
-          // A blog-writer invite (with a password) takes priority over a join entry
-          if (m.password) merged[existingIdx] = m;
-        } else {
-          merged.push(m);
-        }
-      });
-      setEligibleMembers(merged);
-    };
-
-    const applyJoins = (joins: JoinSubmission[]) => {
-      approvedJoins = joins
-        .filter((j) => j.status === 'Approved')
-        .map((j) => ({ name: j.fullName, role: j.position || 'Community Team Member', email: j.email.toLowerCase() }));
-      rebuild();
-    };
-
-    const applyWriters = (writers: BlogWriter[]) => {
-      invitedWriters = writers
-        .filter((w) => w.status === 'Active')
-        .map((w) => ({ name: w.name, role: w.role || 'Guest Contributor', email: w.email.toLowerCase(), password: w.password }));
-      rebuild();
-    };
-
-    applyJoins(getJoins());
-    applyWriters(getBlogWriters());
-
-    fetch('/api/join')
-      .then((res) => res.json())
-      .then((data) => { if (data.success && Array.isArray(data.data)) applyJoins(data.data as JoinSubmission[]); })
-      .catch(() => {});
-
-    fetch('/api/blog-writers')
-      .then((res) => res.json())
-      .then((data) => { if (data.success && Array.isArray(data.data)) applyWriters(data.data as BlogWriter[]); })
-      .catch(() => {});
-  }, []);
 
   // Form State for Write / Edit Blog
   const [formData, setFormData] = useState({
@@ -170,56 +99,56 @@ export default function TeamPortalPage() {
   }, []);
 
   // Load blogs
-  const refreshBlogs = () => {
-    const all = getBlogs();
-    setBlogs(all);
+  const refreshBlogs = async () => {
+    const response = await fetch('/api/blogs', { cache: 'no-store' });
+    if (response.status === 401) {
+      handleLogout();
+      return;
+    }
+    const data = await response.json();
+    if (data.success && Array.isArray(data.data)) setBlogs(data.data);
   };
 
   useEffect(() => {
     if (isAuthenticated) {
-      refreshBlogs();
+      refreshBlogs().catch(() => setLoginError('Unable to load blogs from the server.'));
     }
   }, [isAuthenticated]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoginError('');
-
-    const identity = eligibleMembers.find(
-      (m) => m.email.toLowerCase() === teamEmail.trim().toLowerCase()
-    );
-
-    if (!identity) {
-      setLoginError('Your email must match an approved "Join Us" application, an admin-granted blog invite, or the founding team.');
-      return;
-    }
-
-    // Admin-invited blog writers need their exact, personally-issued password.
-    // Everyone else (core team / approved Join Us members) uses the shared team passcode.
-    const isValid = identity.password
-      ? teamPassword === identity.password
-      : teamPassword === 'team2026' || teamPassword === 'qni@team2026' || teamPassword.length >= 4;
-
-    if (isValid) {
-      setIsAuthenticated(true);
-      sessionStorage.setItem('qni_team_authenticated', 'true');
-      sessionStorage.setItem('qni_team_author_name', authorName);
-      sessionStorage.setItem('qni_team_author_role', authorRole);
-    } else {
-      setLoginError(
-        identity.password
-          ? 'Incorrect password. Check the invite email the admin sent you.'
-          : 'Incorrect passcode. Try: team2026'
-      );
+    try {
+      const response = await fetch('/api/blog-writers/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: teamEmail, password: teamPassword }),
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        setAuthorName(data.writer.name);
+        setAuthorRole(data.writer.role);
+        setIsAuthenticated(true);
+        sessionStorage.setItem('qni_team_authenticated', 'true');
+        sessionStorage.setItem('qni_team_author_name', data.writer.name);
+        sessionStorage.setItem('qni_team_author_role', data.writer.role);
+        return;
+      }
+      setLoginError(data.message || 'Invalid writer email or password.');
+    } catch {
+      setLoginError('Unable to connect to the writer portal.');
     }
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await fetch('/api/blog-writers/logout', { method: 'POST' }).catch(() => {});
     setIsAuthenticated(false);
     sessionStorage.removeItem('qni_team_authenticated');
+    sessionStorage.removeItem('qni_team_author_name');
+    sessionStorage.removeItem('qni_team_author_role');
   };
 
-  const handleSaveArticle = (e: React.FormEvent) => {
+  const handleSaveArticle = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.content) {
       alert('Please fill out title and content fields.');
@@ -231,7 +160,7 @@ export default function TeamPortalPage() {
       .map((t) => t.trim())
       .filter(Boolean);
 
-    saveBlog({
+    const blogPayload = {
       id: editingPostId || undefined,
       title: formData.title,
       slug: formData.slug,
@@ -245,8 +174,18 @@ export default function TeamPortalPage() {
       author: {
         name: authorName,
         role: authorRole,
+        email: teamEmail,
       },
+    };
+    const response = await fetch('/api/blogs', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(blogPayload),
     });
+    if (!response.ok) {
+      alert('Unable to save this blog on the server.');
+      return;
+    }
 
     setNotification(editingPostId ? 'Article updated successfully!' : 'New article published successfully!');
     setTimeout(() => setNotification(null), 4000);
@@ -265,7 +204,7 @@ export default function TeamPortalPage() {
       tags: 'Quantum, Algorithms',
     });
     setActiveTab('my-blogs');
-    refreshBlogs();
+    await refreshBlogs();
   };
 
   const handleEditClick = (post: BlogPost) => {
@@ -284,10 +223,14 @@ export default function TeamPortalPage() {
     setActiveTab('create');
   };
 
-  const handleDeleteClick = (id: string) => {
+  const handleDeleteClick = async (id: string) => {
     if (confirm('Are you sure you want to delete this article?')) {
-      deleteBlog(id);
-      refreshBlogs();
+      const response = await fetch(`/api/blogs?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!response.ok) {
+        alert('Unable to delete this blog on the server.');
+        return;
+      }
+      await refreshBlogs();
       setNotification('Article deleted.');
       setTimeout(() => setNotification(null), 3000);
     }
@@ -320,35 +263,19 @@ export default function TeamPortalPage() {
           <form onSubmit={handleLogin} className="space-y-4">
             <div>
               <label className="text-xs font-mono text-muted-foreground uppercase block mb-1.5">
-                Select Team Member Identity
+                Invited writer email
               </label>
-              <select
-                value={authorName}
-                onChange={(e) => {
-                  const selected = eligibleMembers.find((m) => m.name === e.target.value);
-                  setAuthorName(e.target.value);
-                  setAuthorRole(selected?.role || 'Community Team Member');
-                  setTeamEmail(selected?.email || '');
-                }}
-                className="w-full px-4 py-2.5 bg-foreground/5 border border-foreground/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-foreground/30 mb-3"
-              >
-                {eligibleMembers.map((m) => (
-                  <option key={m.email} value={m.name}>
-                    {m.name} {m.role ? `(${m.role})` : ''}
-                  </option>
-                ))}
-              </select>
-              <p className="text-[11px] text-muted-foreground -mt-2 mb-1">
-                Only the founding team, approved "Join Us" applicants, and admin-invited blog writers appear here.
+              <p className="text-[11px] text-muted-foreground mb-1">
+                Use the email address that received the admin invitation.
               </p>
             </div>
 
             <div>
               <label className="text-xs font-mono text-muted-foreground uppercase block mb-1.5">
-                Email (auto-filled from selected identity)
+                Email
               </label>
               <input
-                type="text"
+                type="email"
                 placeholder="you@example.com"
                 value={teamEmail}
                 onChange={(e) => setTeamEmail(e.target.value)}
@@ -358,9 +285,7 @@ export default function TeamPortalPage() {
             </div>
 
             <div>
-              <label className="text-xs font-mono text-muted-foreground uppercase block mb-1.5">
-                Passcode / Password
-              </label>
+              <label className="text-xs font-mono text-muted-foreground uppercase block mb-1.5">Invite password</label>
               <input
                 type="password"
                 placeholder="••••••••"
@@ -370,8 +295,7 @@ export default function TeamPortalPage() {
                 className="w-full px-4 py-2.5 bg-foreground/5 border border-foreground/10 rounded-xl text-sm text-foreground focus:outline-none focus:border-foreground/30"
               />
               <span className="text-[11px] text-muted-foreground mt-1 block">
-                Founding team / Join Us members — shared passcode: <code className="text-foreground font-mono">team2026</code>.
-                Admin-invited blog writers — use the password from your invite email.
+                Use the generated password from the admin invitation email.
               </span>
             </div>
 

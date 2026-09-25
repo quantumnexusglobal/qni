@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
+import { ObjectId } from 'mongodb';
 import { getMongoDbDatabase } from '@/lib/mongodb';
-import { saveServerSubmission, getServerSubmissions } from '@/lib/server-storage';
-import { sendEventRegistrationEmail, sendAdminNotification } from '@/lib/email';
+import { saveServerSubmission, getServerSubmissions, updateServerSubmissionStatus } from '@/lib/server-storage';
+import { sendEventRegistrationEmail, sendEventCertificateEmail, sendAdminNotification } from '@/lib/email';
 import { isRegistrationOpen } from '@/lib/events-store';
 
 export async function POST(request: Request) {
@@ -133,5 +134,63 @@ export async function GET() {
     return NextResponse.json({ success: true, data: combined });
   } catch (error: any) {
     return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  }
+}
+
+export async function PUT(request: Request) {
+  try {
+    const body = await request.json();
+    const { id, status } = body;
+    if (!id || !['Confirmed', 'Attended', 'Cancelled'].includes(status)) {
+      return NextResponse.json({ success: false, message: 'Valid id and status are required' }, { status: 400 });
+    }
+
+    let registration: any = null;
+    const db = await getMongoDbDatabase();
+    if (db) {
+      const idFilters: any[] = [{ id }];
+      if (ObjectId.isValid(id)) idFilters.push({ _id: new ObjectId(id) });
+      registration = await db.collection('registrations').findOne({ $or: idFilters });
+      if (registration) {
+        await db.collection('registrations').updateOne(
+          { _id: registration._id },
+          { $set: { status, updatedAt: new Date().toISOString() } }
+        );
+      }
+    }
+
+    if (!registration) {
+      registration = getServerSubmissions('registrations').find((item: any) => item.id === id || item._id === id);
+    }
+    updateServerSubmissionStatus('registrations', id, status);
+
+    if (!registration) {
+      return NextResponse.json({ success: false, message: 'Registration not found' }, { status: 404 });
+    }
+
+    const certificateToken = registration.token || registration.id;
+    const wasAttended = registration.status === 'Attended';
+    let certificateEmailSent = false;
+    if (status === 'Attended' && !wasAttended && registration.email) {
+      certificateEmailSent = await sendEventCertificateEmail(
+        registration.email,
+        registration.name || 'Attendee',
+        registration.eventTitle || 'Quantum Event',
+        registration.eventDate,
+        certificateToken
+      ).catch((error) => {
+        console.warn('[Email] Certificate email error:', error);
+        return false;
+      });
+    }
+
+    return NextResponse.json({
+      success: true,
+      certificateEmailSent,
+      certificateUrl: `/certificate/${encodeURIComponent(certificateToken)}`,
+    });
+  } catch (error: any) {
+    console.error('Error updating registration:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }

@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import { getMongoDbDatabase } from '@/lib/mongodb';
 import { INITIAL_BLOG_POSTS } from '@/lib/blogs-store';
+import { getBlogSession, hasAdminSession } from '@/lib/blog-auth';
+
+async function canManageBlogs() {
+  return Boolean((await getBlogSession()) || (await hasAdminSession()));
+}
 
 const LEGACY_SEEDED_BLOG_IDS = ['blog-1', 'blog-2', 'blog-3', 'blog-4'];
 
@@ -44,6 +49,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    if (!(await canManageBlogs())) {
+      return NextResponse.json({ success: false, message: 'Writer or admin authentication required.' }, { status: 401 });
+    }
     const body = await request.json();
     const db = await getMongoDbDatabase();
 
@@ -81,6 +89,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    if (!(await canManageBlogs())) {
+      return NextResponse.json({ success: false, message: 'Writer or admin authentication required.' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 

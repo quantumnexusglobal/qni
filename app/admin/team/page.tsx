@@ -43,6 +43,7 @@ export default function AdminTeamPage() {
   const [members, setMembers] = useState<TeamMember[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
@@ -50,22 +51,41 @@ export default function AdminTeamPage() {
   const [formData, setFormData] = useState(emptyForm());
 
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const auth = localStorage.getItem("qni_admin_authenticated");
-      if (auth !== "true") {
+    let active = true;
+    const verifyAdminSession = async () => {
+      if (typeof window === "undefined" || localStorage.getItem("qni_admin_authenticated") !== "true") {
         router.push("/admin");
+        return;
       }
-    }
+
+      try {
+        const response = await fetch("/api/admin/session", { credentials: "include", cache: "no-store" });
+        const data = await response.json();
+        if (active && !data.authenticated) {
+          localStorage.removeItem("qni_admin_authenticated");
+          alert("Admin session expired. Please log in again.");
+          router.push("/admin");
+        }
+      } catch {
+        if (active) router.push("/admin");
+      }
+    };
+
+    verifyAdminSession();
+    return () => {
+      active = false;
+    };
   }, [router]);
 
   const loadMembers = async () => {
-    setMembers(getTeamMembers());
+    const localMembers = getTeamMembers();
+    setMembers(localMembers);
     try {
       const res = await fetch("/api/team");
       const data = await res.json();
       if (data.success && Array.isArray(data.data) && data.data.length > 0) {
         const remote: TeamMember[] = data.data.map((m: any) => ({
-          id: m.id,
+          id: m.id || (m._id ? String(m._id) : Date.now().toString()),
           name: m.name || "",
           role: m.role || "",
           bio: m.bio || "",
@@ -75,7 +95,13 @@ export default function AdminTeamPage() {
           order: typeof m.order === "number" ? m.order : 99,
           createdAt: m.createdAt || new Date().toISOString(),
         }));
-        setMembers([...remote].sort((a, b) => a.order - b.order));
+        const merged = [...localMembers];
+        remote.forEach((member) => {
+          const index = merged.findIndex((existing) => existing.id === member.id);
+          if (index >= 0) merged[index] = member;
+          else merged.push(member);
+        });
+        setMembers(merged.sort((a, b) => a.order - b.order));
       }
     } catch {
       // fall back to local store silently
@@ -91,23 +117,25 @@ export default function AdminTeamPage() {
     if (!file) return;
 
     setIsUploading(true);
+    setUploadError("");
     try {
       const data = new FormData();
       data.append("file", file);
 
       const res = await fetch("/api/upload", {
         method: "POST",
+        credentials: "include",
         body: data,
       });
       const result = await res.json();
       if (result.success && result.url) {
         setFormData((prev) => ({ ...prev, imageUrl: result.url }));
       } else {
-        alert(result.error || "Upload failed");
+        setUploadError(result.error || "Upload failed");
       }
     } catch (err) {
       console.error("Error uploading file:", err);
-      alert("Failed to upload image. Please try again or use direct URL.");
+      setUploadError("Failed to upload image. Please try again or paste an image URL.");
     } finally {
       setIsUploading(false);
     }
@@ -257,6 +285,9 @@ export default function AdminTeamPage() {
                 <X className="w-4 h-4 text-muted-foreground" />
               </button>
             </div>
+            {uploadError && (
+              <p className="text-sm text-rose-400" role="alert">{uploadError}</p>
+            )}
 
             <form onSubmit={handleSubmit} className="grid sm:grid-cols-2 gap-4">
               {/* Name */}

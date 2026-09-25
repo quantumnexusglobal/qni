@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getMongoDbDatabase } from '@/lib/mongodb';
 import { sendBlogWriterInviteEmail } from '@/lib/email';
+import { hasAdminSession } from '@/lib/blog-auth';
 
 /**
  * Blog writer invite schema (MongoDB document)
@@ -26,9 +27,12 @@ function generateSimplePassword(length = 8): string {
 
 export async function GET() {
   try {
+    if (!(await hasAdminSession())) {
+      return NextResponse.json({ success: false, message: 'Admin authentication required.' }, { status: 401 });
+    }
     const db = await getMongoDbDatabase();
     if (!db) return NextResponse.json({ success: false, message: 'MongoDB not configured' }, { status: 400 });
-    const writers = await db.collection('blog_writers').find({}).sort({ invitedAt: -1 }).toArray();
+    const writers = await db.collection('blog_writers').find({}).sort({ invitedAt: -1 }).project({ password: 0 }).toArray();
     return NextResponse.json({ success: true, data: writers });
   } catch (error: any) {
     console.error('Error fetching blog writers:', error);
@@ -38,6 +42,9 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    if (!(await hasAdminSession())) {
+      return NextResponse.json({ success: false, message: 'Admin authentication required.' }, { status: 401 });
+    }
     const body = await request.json();
     const name = (body.name || '').trim();
     const email = (body.email || '').trim().toLowerCase();
@@ -84,6 +91,9 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    if (!(await hasAdminSession())) {
+      return NextResponse.json({ success: false, message: 'Admin authentication required.' }, { status: 401 });
+    }
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const email = searchParams.get('email');

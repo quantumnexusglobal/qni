@@ -484,6 +484,52 @@ https://www.quantumnexusglobal.org`;
   }
 }
 
+export async function sendEventCertificateEmail(
+  to: string,
+  name: string,
+  eventTitle: string,
+  eventDate: string | undefined,
+  token: string
+) {
+  const transporter = await createTransporter();
+  if (!transporter) {
+    console.warn('[Email] Skipping certificate email — EMAIL_FROM/EMAIL_PASS not configured.');
+    return false;
+  }
+
+  const from = process.env.EMAIL_FROM!;
+  const safeName = escapeHtml(name);
+  const safeEventTitle = escapeHtml(eventTitle);
+  const certificateUrl = `https://www.quantumnexusglobal.org/certificate/${encodeURIComponent(token)}`;
+  const formattedDate = eventDate
+    ? new Date(eventDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : 'the event date';
+  const safeDate = escapeHtml(formattedDate);
+  const html = `<!DOCTYPE html><html lang="en"><body style="margin:0;padding:32px 16px;background:#f4f6f8;font-family:Arial,sans-serif;color:#1e293b">
+  <table role="presentation" width="100%" style="max-width:580px;margin:auto;background:#fff;border:1px solid #e2e8f0;border-radius:12px"><tr><td style="padding:36px">
+    <p style="font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#0e7490">Certificate of participation</p>
+    <h1 style="font-size:26px;color:#0f172a">Well done, ${safeName}</h1>
+    <p style="font-size:15px;line-height:1.6;color:#475569">Thank you for attending <strong>${safeEventTitle}</strong> on ${safeDate}. Your personalized e-certificate is ready.</p>
+    <p><a href="${certificateUrl}" style="display:inline-block;background:#0e7490;color:#fff;text-decoration:none;padding:13px 20px;border-radius:8px;font-weight:700">View and share certificate</a></p>
+    <p style="font-size:13px;line-height:1.5;color:#64748b">You can download it or share the certificate page directly on LinkedIn and X.</p>
+  </td></tr></table></body></html>`;
+  const text = `Well done, ${name}!\n\nYour certificate for attending ${eventTitle} on ${formattedDate} is ready: ${certificateUrl}`;
+
+  try {
+    await transporter.sendMail({
+      from: `"Quantum Nexus Global" <${from}>`,
+      to,
+      subject: `Your certificate for ${eventTitle}`,
+      html,
+      text,
+    });
+    return true;
+  } catch (error) {
+    console.error('[Email] Failed to send certificate email:', error);
+    return false;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────
 // 2. Admin Form Submission Notification → Handles both Join & Contact
 // ─────────────────────────────────────────────────────────────────
